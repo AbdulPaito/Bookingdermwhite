@@ -13,13 +13,14 @@ import { cn } from "@/lib/utils";
 
 type FormState = Omit<Promo, "_id"> & { _id?: string };
 
-const empty: FormState = { title: "", description: "", price: 0, image_url: "", active: true };
+const empty: FormState = { title: "", description: "", price: undefined, image_url: "", active: true };
 
 const AdminPromos = () => {
   const [promos, setPromos] = useState<Promo[]>([]);
   const [form, setForm] = useState<FormState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -58,12 +59,15 @@ const AdminPromos = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !form) return;
+    setUploading(true);
     try {
       const url = await uploadImage(file);
       setForm({ ...form, image_url: url });
       toast({ title: "Uploaded", description: "Image uploaded to Cloudinary." });
     } catch {
       toast({ title: "Upload failed", description: "Failed to upload image." });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -272,8 +276,8 @@ const AdminPromos = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Price (₱)</Label>
-                  <Input className="h-11 rounded-xl" type="number" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} required />
+                  <Label>Price (₱) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input className="h-11 rounded-xl" type="number" value={form.price ?? ""} onChange={(e) => setForm({ ...form, price: e.target.value ? Number(e.target.value) : undefined })} placeholder="e.g. 599" />
                 </div>
                 <div className="space-y-2">
                   <Label>Badge (optional)</Label>
@@ -283,7 +287,12 @@ const AdminPromos = () => {
               <div className="space-y-3">
                 <Label>Promo Image</Label>
 
-                {form.image_url ? (
+                {uploading ? (
+                  <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-primary">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <span className="text-sm font-medium">Uploading image...</span>
+                  </div>
+                ) : form.image_url ? (
                   <div className="group relative aspect-video overflow-hidden rounded-2xl border border-border bg-muted">
                     <img src={form.image_url} alt="Preview" className="h-full w-full object-cover" />
                     <button

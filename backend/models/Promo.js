@@ -15,7 +15,7 @@ const promoSchema = new mongoose.Schema(
     },
     price: {
       type: Number,
-      required: [true, 'Price is required'],
+      default: 0,
       min: [0, 'Price cannot be negative'],
     },
     image_url: {

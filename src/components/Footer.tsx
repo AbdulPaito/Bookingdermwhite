@@ -46,11 +46,11 @@ export const Footer = () => {
         <div>
           <h4 className="mb-3 text-sm font-bold uppercase tracking-wider">Follow</h4>
           <div className="flex gap-3">
-            <a href="#" aria-label="Facebook" className="flex h-10 w-10 items-center justify-center rounded-xl border border-border transition-colors hover:bg-primary hover:text-primary-foreground">
+            <a href="https://www.facebook.com/profile.php?id=61588586916026" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="flex h-10 w-10 items-center justify-center rounded-xl border border-border transition-colors hover:bg-primary hover:text-primary-foreground">
               <Facebook className="h-4 w-4" />
             </a>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">Facebook page coming soon.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Follow us on Facebook for updates!</p>
         </div>
       </div>
       <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
