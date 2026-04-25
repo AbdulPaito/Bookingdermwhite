@@ -154,9 +154,11 @@ const AdminPromos = () => {
                 </div>
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-foreground/40 via-transparent to-transparent" />
-              <span className="absolute right-3 top-3 rounded-full bg-background/95 px-3 py-1 text-sm font-bold text-primary shadow-soft backdrop-blur">
-                ₱{promo.price.toLocaleString()}
-              </span>
+              {promo.price > 0 && (
+                <span className="absolute right-3 top-3 rounded-full bg-background/95 px-3 py-1 text-sm font-bold text-primary shadow-soft backdrop-blur">
+                  ₱{promo.price.toLocaleString()}
+                </span>
+              )}
               {promo.badge && (
                 <span className="absolute left-3 top-3 rounded-full bg-gradient-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-soft">
                   {promo.badge}
