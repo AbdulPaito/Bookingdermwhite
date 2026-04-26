@@ -19,74 +19,86 @@ const getCroppedImg = async (
   crop: CropType,
   imageElement: HTMLImageElement
 ): Promise<Blob> => {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    
-    image.onload = () => {
-      // Calculate actual pixel coordinates based on the displayed image dimensions
-      const scaleX = image.naturalWidth / imageElement.width;
-      const scaleY = image.naturalHeight / imageElement.height;
-      
-      const pixelCrop = {
-        x: Math.round((crop.x * imageElement.width) / 100 * scaleX),
-        y: Math.round((crop.y * imageElement.height) / 100 * scaleY),
-        width: Math.round((crop.width * imageElement.width) / 100 * scaleX),
-        height: Math.round((crop.height * imageElement.height) / 100 * scaleY),
-      };
-
-      // Ensure valid dimensions
-      if (pixelCrop.width <= 0 || pixelCrop.height <= 0) {
-        reject(new Error("Invalid crop dimensions"));
-        return;
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = pixelCrop.width;
-      canvas.height = pixelCrop.height;
-      
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("No 2d context"));
-        return;
-      }
-
-      // Fill white background first (prevent transparency issues)
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw the cropped portion
-      ctx.drawImage(
-        image,
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height,
-        0,
-        0,
-        pixelCrop.width,
-        pixelCrop.height
-      );
-
-      // Export as JPEG with high quality
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error("Canvas to Blob failed"));
-          }
-        },
-        "image/jpeg",
-        0.95
-      );
-    };
-
-    image.onerror = () => {
-      reject(new Error("Failed to load image for cropping"));
-    };
-
+  // 1. WAIT FOR IMAGE LOAD (CRITICAL)
+  const image = new Image();
+  image.crossOrigin = "anonymous";
+  
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Failed to load image"));
     image.src = imageSrc;
+  });
+
+  // 2. USE NATURAL IMAGE SIZE (FIX SCALE)
+  // Get displayed dimensions from the rendered image element
+  const displayedWidth = imageElement.width || imageElement.clientWidth;
+  const displayedHeight = imageElement.height || imageElement.clientHeight;
+  
+  const scaleX = image.naturalWidth / displayedWidth;
+  const scaleY = image.naturalHeight / displayedHeight;
+  
+  // Convert percentage crop to pixel values
+  const pixelCrop = {
+    x: (crop.x * displayedWidth) / 100,
+    y: (crop.y * displayedHeight) / 100,
+    width: (crop.width * displayedWidth) / 100,
+    height: (crop.height * displayedHeight) / 100,
+  };
+
+  // DEBUG CHECK
+  console.log("CROP (percent):", crop);
+  console.log("DISPLAYED:", displayedWidth, displayedHeight);
+  console.log("SCALE:", scaleX, scaleY);
+  console.log("PIXEL CROP:", pixelCrop);
+
+  // Ensure valid dimensions
+  if (pixelCrop.width <= 0 || pixelCrop.height <= 0) {
+    throw new Error("Invalid crop dimensions: " + JSON.stringify(pixelCrop));
+  }
+
+  // 3. FIX DRAW IMAGE (MOST IMPORTANT)
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(pixelCrop.width * scaleX);
+  canvas.height = Math.round(pixelCrop.height * scaleY);
+  
+  console.log("CANVAS:", canvas.width, canvas.height);
+  
+  if (canvas.width <= 0 || canvas.height <= 0) {
+    throw new Error("Invalid canvas dimensions: " + canvas.width + "x" + canvas.height);
+  }
+  
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("No 2d context");
+  }
+
+  // 4. REMOVE WHITE FILL - draw image directly
+  ctx.drawImage(
+    image,
+    Math.round(pixelCrop.x * scaleX),
+    Math.round(pixelCrop.y * scaleY),
+    Math.round(pixelCrop.width * scaleX),
+    Math.round(pixelCrop.height * scaleY),
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  // 6. EXPORT FIX
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Canvas to Blob failed - blob is null"));
+          return;
+        }
+        console.log("BLOB CREATED:", blob.size, "bytes");
+        resolve(blob);
+      },
+      "image/jpeg",
+      0.95
+    );
   });
 };
 
