@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, ZoomIn } from "lucide-react";
+import { Sparkles, X, ZoomIn, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Promo } from "@/lib/api";
+
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&q=80";
 
 type Props = {
   promo: Promo;
@@ -13,6 +15,8 @@ type Props = {
 
 export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
   const [showFullImage, setShowFullImage] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <motion.article
@@ -27,11 +31,25 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
         className="relative aspect-[4/3] cursor-pointer overflow-hidden bg-gradient-to-br from-primary/10 via-muted/40 to-accent/10"
         onClick={() => setShowFullImage(true)}
       >
+        {!imgLoaded && !imgError && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-muted/50">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <span className="text-xs font-medium text-primary/70">Loading...</span>
+          </div>
+        )}
+        {imgError && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-muted">
+            <ImageIcon className="h-10 w-10 text-muted-foreground/50" />
+            <span className="text-xs text-muted-foreground">Image unavailable</span>
+          </div>
+        )}
         <img
           src={promo.image_url}
           alt={promo.title}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          loading={index < 3 ? "eager" : "lazy"}
+          className={"h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 " + (imgLoaded && !imgError ? "opacity-100" : "opacity-0")}
+          onLoad={() => setImgLoaded(true)}
+          onError={() => { setImgError(true); setImgLoaded(true); }}
         />
         {/* Mobile tap indicator - always visible */}
         <div className="absolute bottom-2 right-2 rounded-full bg-black/60 p-1.5 text-white shadow-lg md:hidden">
@@ -75,10 +93,10 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
                 <X className="h-5 w-5" />
               </button>
               <img
-                src={promo.image_url}
+                src={imgError ? FALLBACK_IMAGE : promo.image_url}
                 alt={promo.title}
                 className="max-h-[85vh] max-w-[85vw] rounded-xl object-contain shadow-2xl"
-                onError={(e) => console.error('Image load error:', e)}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE; }}
               />
             </motion.div>
           </motion.div>

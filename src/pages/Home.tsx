@@ -22,7 +22,8 @@ const Home = () => {
   const [selectedPromo, setSelectedPromo] = useState<Promo | undefined>();
   const [promos, setPromos] = useState<Promo[]>([]);
   const [loading, setLoading] = useState(true);
-  const { settings } = useSiteSettings();
+  const { settings, loading: settingsLoading } = useSiteSettings();
+  const [heroImgLoaded, setHeroImgLoaded] = useState(false);
 
   useEffect(() => {
     getPromos()
@@ -98,10 +99,18 @@ const Home = () => {
             className="relative order-1 md:order-2"
           >
             <div className="relative flex aspect-[4/5] max-h-[400px] items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary/10 via-background to-accent/10 p-3 shadow-glow ring-1 ring-primary/10 md:max-h-none md:aspect-[4/5]">
+              {(!heroImgLoaded || settingsLoading) && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <span className="text-sm font-medium text-primary/70">Loading image...</span>
+                </div>
+              )}
               <img
-                src={settings.heroImage}
+                src={settings.heroImage || "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&q=80"}
                 alt="Premium beauty clinic hero"
                 className="h-full w-full rounded-[2rem] object-contain"
+                onLoad={() => setHeroImgLoaded(true)}
+                onError={() => setHeroImgLoaded(true)}
               />
             </div>
           </motion.div>
