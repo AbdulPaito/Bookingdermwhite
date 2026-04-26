@@ -51,7 +51,7 @@ const Home = () => {
         <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-accent/25 blur-3xl" />
         <div className="absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-secondary/20 blur-3xl" />
 
-        <div className="container relative mx-auto grid gap-6 px-4 py-12 md:grid-cols-2 md:items-center md:gap-10 md:py-28">
+        <div className="container relative mx-auto grid gap-8 px-4 py-10 sm:py-12 md:grid-cols-2 md:items-center md:gap-10 md:py-28">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -98,7 +98,7 @@ const Home = () => {
             transition={{ duration: 0.7, delay: 0.2 }}
             className="relative order-1 md:order-2"
           >
-            <div className="relative flex aspect-[4/5] max-h-[400px] items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary/10 via-background to-accent/10 p-3 shadow-glow ring-1 ring-primary/10 md:max-h-none md:aspect-[4/5]">
+            <div className="relative flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-background to-accent/10 p-2 shadow-glow ring-1 ring-primary/10 sm:aspect-[4/5] sm:rounded-3xl sm:p-3 md:rounded-[2.5rem]">
               {(!heroImgLoaded || settingsLoading) && (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3">
                   <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -108,7 +108,7 @@ const Home = () => {
               <img
                 src={settings.heroImage || "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&q=80"}
                 alt="Premium beauty clinic hero"
-                className="h-full w-full rounded-[2rem] object-contain"
+                className="h-full w-full rounded-xl object-contain sm:rounded-2xl md:rounded-[2rem]"
                 onLoad={() => setHeroImgLoaded(true)}
                 onError={() => setHeroImgLoaded(true)}
               />
