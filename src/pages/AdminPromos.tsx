@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, ImagePlus, Pencil, Plus, Trash2, Upload, X, ZoomIn } from "lucide-react";
+import { Eye, EyeOff, ImagePlus, Pencil, Plus, Trash2, Upload, X, ZoomIn, Check, Loader2 } from "lucide-react";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +22,11 @@ const AdminPromos = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const openImageView = useCallback((url: string) => setViewImage(url), []);
   const closeImageView = useCallback(() => setViewImage(null), []);
@@ -56,14 +60,46 @@ const AdminPromos = () => {
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !form) return;
+    setPendingFile(file);
+    setCropModalOpen(true);
+    // Reset file input so same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSkipCrop = async () => {
+    if (!pendingFile) return;
+    setCropModalOpen(false);
+    await performUpload(pendingFile);
+    setPendingFile(null);
+  };
+
+  const handleCrop = async (croppedBlob: Blob) => {
+    if (!pendingFile) return;
+    setCropModalOpen(false);
+    // Create new file from blob
+    const croppedFile = new File([croppedBlob], pendingFile.name, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+    await performUpload(croppedFile);
+    setPendingFile(null);
+  };
+
+  const performUpload = async (file: File) => {
     setUploading(true);
+    setUploadSuccess(false);
     try {
       const url = await uploadImage(file);
       setForm({ ...form, image_url: url });
+      setUploadSuccess(true);
       toast({ title: "Uploaded", description: "Image uploaded to Cloudinary." });
+      // Reset success state after 2 seconds
+      setTimeout(() => setUploadSuccess(false), 2000);
     } catch {
       toast({ title: "Upload failed", description: "Failed to upload image." });
     } finally {
@@ -290,12 +326,17 @@ const AdminPromos = () => {
                 <Label>Promo Image</Label>
 
                 {uploading ? (
-                  <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-primary">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-primary">
+                    <Loader2 className="h-8 w-8 animate-spin" />
                     <span className="text-sm font-medium">Uploading image...</span>
                   </div>
+                ) : uploadSuccess ? (
+                  <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-green-300 bg-green-50 text-green-600">
+                    <Check className="h-8 w-8" />
+                    <span className="text-sm font-medium">Upload successful!</span>
+                  </div>
                 ) : form.image_url ? (
-                  <div className="group relative aspect-video overflow-hidden rounded-2xl border border-border bg-muted">
+                  <div className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-muted">
                     <img src={form.image_url} alt="Preview" className="h-full w-full object-cover" />
                     <button
                       type="button"
@@ -310,7 +351,7 @@ const AdminPromos = () => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted/40 text-muted-foreground transition hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+                    className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted/40 text-muted-foreground transition hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
                   >
                     <ImagePlus className="h-8 w-8" />
                     <span className="text-sm font-medium">Click to upload an image</span>
@@ -326,17 +367,22 @@ const AdminPromos = () => {
                   onChange={handleFileChange}
                 />
 
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="h-4 w-4" />
-                    {form.image_url ? "Replace Image" : "Upload File"}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : uploadSuccess ? (
+                    <Check className="mr-2 h-4 w-4 text-green-600" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  {uploading ? "Uploading..." : uploadSuccess ? "Uploaded!" : form.image_url ? "Replace Image" : "Upload File"}
+                </Button>
 
               </div>
 
@@ -348,6 +394,18 @@ const AdminPromos = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        imageFile={pendingFile}
+        onClose={() => {
+          setCropModalOpen(false);
+          setPendingFile(null);
+        }}
+        onCrop={handleCrop}
+        onSkip={handleSkipCrop}
+      />
     </AdminLayout>
   );
 };

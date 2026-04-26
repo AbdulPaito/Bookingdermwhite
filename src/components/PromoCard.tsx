@@ -47,7 +47,7 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
           src={promo.image_url}
           alt={promo.title}
           loading={index < 3 ? "eager" : "lazy"}
-          className={"w-full h-full object-contain transition-transform duration-700 group-hover:scale-105 " + (imgLoaded && !imgError ? "opacity-100" : "opacity-0")}
+          className={"w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 " + (imgLoaded && !imgError ? "opacity-100" : "opacity-0")}
           onLoad={() => setImgLoaded(true)}
           onError={() => { setImgError(true); setImgLoaded(true); }}
         />

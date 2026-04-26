@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ImagePlus, RotateCcw, Save, Type, Upload, X } from "lucide-react";
+import { ImagePlus, RotateCcw, Save, Type, Upload, X, Loader2, Check } from "lucide-react";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,11 @@ const AdminSettings = () => {
   const [draft, setDraft] = useState<SiteSettings>(defaults);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -46,19 +51,52 @@ const AdminSettings = () => {
     setDraft((d) => ({ ...d, [key]: value }));
   };
 
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       toast({ title: "File too large", description: "Please choose an image under 5MB." });
       return;
     }
+    setPendingFile(file);
+    setCropModalOpen(true);
+    // Reset file input so same file can be selected again
+    if (fileRef.current) {
+      fileRef.current.value = '';
+    }
+  };
+
+  const handleSkipCrop = async () => {
+    if (!pendingFile) return;
+    setCropModalOpen(false);
+    await performUpload(pendingFile);
+    setPendingFile(null);
+  };
+
+  const handleCrop = async (croppedBlob: Blob) => {
+    if (!pendingFile) return;
+    setCropModalOpen(false);
+    const croppedFile = new File([croppedBlob], pendingFile.name, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+    await performUpload(croppedFile);
+    setPendingFile(null);
+  };
+
+  const performUpload = async (file: File) => {
+    setUploading(true);
+    setUploadSuccess(false);
     try {
       const url = await uploadImage(file);
       setField("hero_image", url);
+      setUploadSuccess(true);
       toast({ title: "Uploaded", description: "Image uploaded to Cloudinary." });
+      setTimeout(() => setUploadSuccess(false), 2000);
     } catch {
       toast({ title: "Upload failed", description: "Failed to upload image." });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -117,7 +155,17 @@ const AdminSettings = () => {
               <h2 className="font-display text-lg font-bold">Hero Image</h2>
             </div>
 
-            {draft.hero_image ? (
+            {uploading ? (
+              <div className="flex aspect-[4/5] max-h-[360px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-primary">
+                <Loader2 className="h-10 w-10 animate-spin" />
+                <span className="text-sm font-medium">Uploading image...</span>
+              </div>
+            ) : uploadSuccess ? (
+              <div className="flex aspect-[4/5] max-h-[360px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-green-300 bg-green-50 text-green-600">
+                <Check className="h-10 w-10" />
+                <span className="text-sm font-medium">Upload successful!</span>
+              </div>
+            ) : draft.hero_image ? (
               <div className="relative flex min-h-[420px] items-center justify-center overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-muted/60 to-background p-3">
                 <img
                   src={draft.hero_image}
@@ -147,9 +195,21 @@ const AdminSettings = () => {
 
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
 
-            <Button type="button" variant="outline" className="w-full" onClick={() => fileRef.current?.click()}>
-              <Upload className="h-4 w-4" />
-              {draft.hero_image ? "Replace Image" : "Upload File"}
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : uploadSuccess ? (
+                <Check className="mr-2 h-4 w-4 text-green-600" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              {uploading ? "Uploading..." : uploadSuccess ? "Uploaded!" : draft.hero_image ? "Replace Image" : "Upload File"}
             </Button>
           </div>
 
@@ -265,6 +325,18 @@ const AdminSettings = () => {
           </p>
         </div>
       </motion.div>
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        imageFile={pendingFile}
+        onClose={() => {
+          setCropModalOpen(false);
+          setPendingFile(null);
+        }}
+        onCrop={handleCrop}
+        onSkip={handleSkipCrop}
+      />
     </AdminLayout>
   );
 };
