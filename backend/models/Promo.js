@@ -27,6 +27,19 @@ const promoSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    badgeType: {
+      type: String,
+      enum: ['', 'hot-deal', 'best-seller', 'limited-time'],
+      default: '',
+    },
+    startDate: {
+      type: Date,
+      default: null,
+    },
+    endDate: {
+      type: Date,
+      default: null,
+    },
     active: {
       type: Boolean,
       default: true,

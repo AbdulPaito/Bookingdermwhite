@@ -14,7 +14,17 @@ import { cn } from "@/lib/utils";
 
 type FormState = Omit<Promo, "_id"> & { _id?: string };
 
-const empty: FormState = { title: "", description: "", price: undefined, image_url: "", active: true };
+const empty: FormState = { 
+  title: "", 
+  description: "", 
+  price: undefined, 
+  image_url: "", 
+  active: true,
+  badge: "",
+  badgeType: "",
+  startDate: "",
+  endDate: ""
+};
 
 const AdminPromos = () => {
   const [promos, setPromos] = useState<Promo[]>([]);
@@ -320,9 +330,52 @@ const AdminPromos = () => {
                   <Input className="h-11 rounded-xl" type="number" value={form.price ?? ""} onChange={(e) => setForm({ ...form, price: e.target.value ? Number(e.target.value) : undefined })} placeholder="e.g. 599" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Badge (optional)</Label>
-                  <Input className="h-11 rounded-xl" value={form.badge ?? ""} onChange={(e) => setForm({ ...form, badge: e.target.value })} />
+                  <Label>Badge Type (optional)</Label>
+                  <select 
+                    className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                    value={form.badgeType ?? ""}
+                    onChange={(e) => setForm({ ...form, badgeType: e.target.value as any })}
+                  >
+                    <option value="">None</option>
+                    <option value="hot-deal">🔥 Hot Deal</option>
+                    <option value="best-seller">⭐ Best Seller</option>
+                    <option value="limited-time">⏰ Limited Time</option>
+                  </select>
                 </div>
+              </div>
+
+              {/* Limited Time Dates */}
+              {form.badgeType === 'limited-time' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Start Date <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                    <Input 
+                      className="h-11 rounded-xl" 
+                      type="datetime-local" 
+                      value={form.startDate ?? ""} 
+                      onChange={(e) => setForm({ ...form, startDate: e.target.value })} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Date <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                    <Input 
+                      className="h-11 rounded-xl" 
+                      type="datetime-local" 
+                      value={form.endDate ?? ""} 
+                      onChange={(e) => setForm({ ...form, endDate: e.target.value })} 
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Custom Badge Text (optional)</Label>
+                <Input 
+                  className="h-11 rounded-xl" 
+                  value={form.badge ?? ""} 
+                  onChange={(e) => setForm({ ...form, badge: e.target.value })}
+                  placeholder="e.g. New, Flash Sale, Exclusive"
+                />
               </div>
               <div className="space-y-3">
                 <Label>Promo Image</Label>

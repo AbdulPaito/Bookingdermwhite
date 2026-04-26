@@ -41,6 +41,9 @@ export interface Promo {
   price: number;
   image_url: string;
   badge?: string;
+  badgeType?: '' | 'hot-deal' | 'best-seller' | 'limited-time';
+  startDate?: string;
+  endDate?: string;
   active?: boolean;
   createdAt?: string;
   updatedAt?: string;

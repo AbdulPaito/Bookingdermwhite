@@ -61,8 +61,25 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
             <ZoomIn className="h-5 w-5 text-foreground" />
           </div>
         </div>
+        {/* Badge Type Label */}
+        {promo.badgeType && (
+          <span className={`absolute left-4 top-4 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold shadow-soft ${
+            promo.badgeType === 'hot-deal' ? 'bg-red-500 text-white' :
+            promo.badgeType === 'best-seller' ? 'bg-amber-500 text-white' :
+            promo.badgeType === 'limited-time' ? 'bg-purple-500 text-white' :
+            'bg-accent text-accent-foreground'
+          }`}>
+            {promo.badgeType === 'hot-deal' && '🔥'}
+            {promo.badgeType === 'best-seller' && '⭐'}
+            {promo.badgeType === 'limited-time' && '⏰'}
+            {promo.badgeType === 'hot-deal' ? 'Hot Deal' :
+             promo.badgeType === 'best-seller' ? 'Best Seller' :
+             promo.badgeType === 'limited-time' ? 'Limited Time' : ''}
+          </span>
+        )}
+        {/* Custom Badge Text */}
         {promo.badge && (
-          <span className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-bold text-accent-foreground shadow-soft">
+          <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-bold text-accent-foreground shadow-soft">
             <Sparkles className="h-3 w-3" /> {promo.badge}
           </span>
         )}
@@ -105,12 +122,38 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
       )}
 
       <div className="flex flex-1 flex-col gap-3 p-5">
-        <h3 className="font-display text-xl font-bold leading-tight">{promo.title}</h3>
-        <p className="flex-1 text-sm text-muted-foreground">{promo.description}</p>
+        {/* Title */}
+        <div>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Title</span>
+          <h3 className="font-display text-xl font-bold leading-tight">{promo.title}</h3>
+        </div>
+        
+        {/* Description */}
+        <div className="flex-1">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Description</span>
+          <p className="text-sm text-muted-foreground line-clamp-3">{promo.description}</p>
+        </div>
+
+        {/* Limited Time Dates */}
+        {promo.badgeType === 'limited-time' && (promo.startDate || promo.endDate) && (
+          <div className="rounded-lg bg-purple-50 p-2 text-xs">
+            <span className="text-[10px] uppercase tracking-wider text-purple-600 font-semibold">⏰ Promo Period</span>
+            <div className="mt-1 text-purple-700">
+              {promo.startDate && (
+                <div>Starts: {new Date(promo.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+              )}
+              {promo.endDate && (
+                <div>Ends: {new Date(promo.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Price & CTA */}
         <div className="flex items-end justify-between pt-2">
           <div>
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">From</span>
-            <p className="font-display text-2xl font-bold text-primary">₱{promo.price.toLocaleString()}</p>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</span>
+            <p className="font-display text-2xl font-bold text-primary">₱{promo.price?.toLocaleString() || '0'}</p>
           </div>
           <Button variant="hero" size="sm" onClick={() => onBook(promo)}>
             Book Now

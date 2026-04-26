@@ -17,13 +17,22 @@ const features = [
   { icon: Award, title: "Certified Staff", text: "Licensed dermatologists and trained estheticians, always." },
 ];
 
+type FilterTab = 'all' | 'hot-deal' | 'best-seller' | 'limited-time';
+
 const Home = () => {
   const [open, setOpen] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState<Promo | undefined>();
   const [promos, setPromos] = useState<Promo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const { settings, loading: settingsLoading } = useSiteSettings();
   const [heroImgLoaded, setHeroImgLoaded] = useState(false);
+
+  // Filter promos based on active tab
+  const filteredPromos = promos.filter((promo) => {
+    if (activeFilter === 'all') return true;
+    return promo.badgeType === activeFilter;
+  });
 
   useEffect(() => {
     getPromos()
@@ -132,15 +141,54 @@ const Home = () => {
           </p>
         </motion.div>
 
+        {/* Filter Tabs */}
+        <div className="mb-8 flex flex-wrap justify-center gap-2">
+          {[
+            { id: 'all', label: 'All', emoji: '🔥', count: promos.length },
+            { id: 'hot-deal', label: 'Hot Deals', emoji: '🔥', count: promos.filter(p => p.badgeType === 'hot-deal').length },
+            { id: 'best-seller', label: 'Best Sellers', emoji: '⭐', count: promos.filter(p => p.badgeType === 'best-seller').length },
+            { id: 'limited-time', label: 'Limited Time', emoji: '⏰', count: promos.filter(p => p.badgeType === 'limited-time').length },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveFilter(tab.id as FilterTab)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                activeFilter === tab.id
+                  ? 'bg-primary text-primary-foreground shadow-soft'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {tab.emoji} {tab.label}
+              {tab.count > 0 && (
+                <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                  activeFilter === tab.id ? 'bg-white/20' : 'bg-background'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {loading ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-80 animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
+        ) : filteredPromos.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No promos found in this category.</p>
+            <button 
+              onClick={() => setActiveFilter('all')}
+              className="mt-2 text-sm text-primary hover:underline"
+            >
+              Show all promos
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {promos.map((promo, i) => (
+            {filteredPromos.map((promo, i) => (
               <PromoCard key={promo._id} promo={promo} onBook={openBooking} index={i} />
             ))}
           </div>
