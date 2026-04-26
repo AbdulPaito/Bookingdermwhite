@@ -95,7 +95,8 @@ const AdminPromos = () => {
     setUploadSuccess(false);
     try {
       const url = await uploadImage(file);
-      setForm({ ...form, image_url: url });
+      // Use functional update to ensure we always have latest form state
+      setForm((prev) => (prev ? { ...prev, image_url: url } : null));
       setUploadSuccess(true);
       toast({ title: "Uploaded", description: "Image uploaded to Cloudinary." });
       // Reset success state after 2 seconds
