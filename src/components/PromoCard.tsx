@@ -28,7 +28,7 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-shadow hover:shadow-glow"
     >
       <div 
-        className="relative aspect-[4/3] cursor-pointer overflow-hidden bg-gradient-to-br from-primary/10 via-muted/40 to-accent/10"
+        className="relative aspect-[4/3] cursor-pointer overflow-hidden bg-muted"
         onClick={() => setShowFullImage(true)}
       >
         {!imgLoaded && !imgError && (
@@ -47,7 +47,7 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
           src={promo.image_url}
           alt={promo.title}
           loading={index < 3 ? "eager" : "lazy"}
-          className={"h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 " + (imgLoaded && !imgError ? "opacity-100" : "opacity-0")}
+          className={"w-full h-full object-contain transition-transform duration-700 group-hover:scale-105 " + (imgLoaded && !imgError ? "opacity-100" : "opacity-0")}
           onLoad={() => setImgLoaded(true)}
           onError={() => { setImgError(true); setImgLoaded(true); }}
         />
