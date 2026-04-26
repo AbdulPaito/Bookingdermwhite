@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ImagePlus, Pencil, Plus, Trash2, Upload, X, ZoomIn, Check, Loader2 } from "lucide-react";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,8 @@ const AdminPromos = () => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const openImageView = useCallback((url: string) => setViewImage(url), []);
   const closeImageView = useCallback(() => setViewImage(null), []);
@@ -60,12 +63,32 @@ const AdminPromos = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !form) return;
-    // Upload directly without crop
-    performUpload(file);
+    // Open crop modal first
+    setPendingFile(file);
+    setCropModalOpen(true);
     // Reset file input so same file can be selected again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleSkipCrop = async () => {
+    if (!pendingFile) return;
+    setCropModalOpen(false);
+    await performUpload(pendingFile);
+    setPendingFile(null);
+  };
+
+  const handleCrop = async (croppedBlob: Blob) => {
+    if (!pendingFile) return;
+    setCropModalOpen(false);
+    // Create new file from blob
+    const croppedFile = new File([croppedBlob], pendingFile.name, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+    await performUpload(croppedFile);
+    setPendingFile(null);
   };
 
   const performUpload = async (file: File) => {
@@ -385,6 +408,18 @@ const AdminPromos = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        imageFile={pendingFile}
+        onClose={() => {
+          setCropModalOpen(false);
+          setPendingFile(null);
+        }}
+        onCrop={handleCrop}
+        onSkip={handleSkipCrop}
+      />
     </AdminLayout>
   );
 };
