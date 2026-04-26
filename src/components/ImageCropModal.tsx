@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Crop, SkipForward, Check, Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -80,11 +80,32 @@ export const ImageCropModal = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  // Create object URL when file changes
-  if (imageFile && !imageUrl) {
-    const url = URL.createObjectURL(imageFile);
-    setImageUrl(url);
-  }
+  // Reset all state when modal opens with new file
+  useEffect(() => {
+    if (isOpen && imageFile) {
+      // Cleanup old URL
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+      // Reset all states
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+      setIsProcessing(false);
+      setUploadSuccess(false);
+      // Create new URL
+      const url = URL.createObjectURL(imageFile);
+      setImageUrl(url);
+    }
+  }, [isOpen, imageFile]);
+
+  // Cleanup on unmount or close
+  useEffect(() => {
+    if (!isOpen && imageUrl) {
+      URL.revokeObjectURL(imageUrl);
+      setImageUrl(null);
+    }
+  }, [isOpen]);
 
   // Called when crop completes - gives us pixel coordinates
   const onCropComplete = useCallback(
