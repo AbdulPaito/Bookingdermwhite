@@ -123,16 +123,10 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
 
       <div className="flex flex-1 flex-col gap-3 p-5">
         {/* Title */}
-        <div>
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Title</span>
-          <h3 className="font-display text-xl font-bold leading-tight">{promo.title}</h3>
-        </div>
+        <h3 className="font-display text-xl font-bold leading-tight">{promo.title}</h3>
         
         {/* Description */}
-        <div className="flex-1">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Description</span>
-          <p className="text-sm text-muted-foreground line-clamp-3">{promo.description}</p>
-        </div>
+        <p className="flex-1 text-sm text-muted-foreground line-clamp-3">{promo.description}</p>
 
         {/* Limited Time Dates */}
         {promo.badgeType === 'limited-time' && (promo.startDate || promo.endDate) && (
@@ -152,7 +146,7 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
         {/* Price & CTA */}
         <div className="flex items-end justify-between pt-2">
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</span>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">From</span>
             <p className="font-display text-2xl font-bold text-primary">₱{promo.price?.toLocaleString() || '0'}</p>
           </div>
           <Button variant="hero" size="sm" onClick={() => onBook(promo)}>
