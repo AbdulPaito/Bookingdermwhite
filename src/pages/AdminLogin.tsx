@@ -56,7 +56,7 @@ const AdminLogin = () => {
         <h1 className="text-center font-display text-3xl font-bold">Welcome back</h1>
         <p className="mt-1 text-center text-sm text-muted-foreground">Sign in to your dashboard</p>
 
-        <form onSubmit={submit} className="mt-8 space-y-4">
+        <form onSubmit={submit} className="mt-8 space-y-4" noValidate autoComplete="off">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
@@ -68,6 +68,7 @@ const AdminLogin = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 rounded-xl pl-11"
+                autoComplete="email"
               />
             </div>
           </div>
@@ -82,6 +83,7 @@ const AdminLogin = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="h-12 rounded-xl pl-11 pr-11"
+                autoComplete="current-password"
               />
               <button
                 type="button"
