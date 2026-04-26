@@ -16,89 +16,58 @@ interface ImageCropModalProps {
 // Helper to get cropped image as blob with proper canvas rendering
 const getCroppedImg = async (
   imageSrc: string,
-  crop: CropType,
-  imageElement: HTMLImageElement
+  pixelCrop: { x: number; y: number; width: number; height: number }
 ): Promise<Blob> => {
-  // 1. WAIT FOR IMAGE LOAD (CRITICAL)
   const image = new Image();
   image.crossOrigin = "anonymous";
-  
-  await new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = () => reject(new Error("Failed to load image"));
-    image.src = imageSrc;
+  image.src = imageSrc;
+
+  await new Promise((resolve, reject) => {
+    image.onload = resolve;
+    image.onerror = reject;
   });
 
-  // 2. USE NATURAL IMAGE SIZE (FIX SCALE)
-  // Get displayed dimensions from the rendered image element
-  const displayedWidth = imageElement.width || imageElement.clientWidth;
-  const displayedHeight = imageElement.height || imageElement.clientHeight;
-  
-  const scaleX = image.naturalWidth / displayedWidth;
-  const scaleY = image.naturalHeight / displayedHeight;
-  
-  // Convert percentage crop to pixel values
-  const pixelCrop = {
-    x: (crop.x * displayedWidth) / 100,
-    y: (crop.y * displayedHeight) / 100,
-    width: (crop.width * displayedWidth) / 100,
-    height: (crop.height * displayedHeight) / 100,
-  };
-
-  // DEBUG CHECK
-  console.log("CROP (percent):", crop);
-  console.log("DISPLAYED:", displayedWidth, displayedHeight);
-  console.log("SCALE:", scaleX, scaleY);
+  // DEBUG LOGS
   console.log("PIXEL CROP:", pixelCrop);
+  console.log("IMAGE NATURAL:", image.naturalWidth, image.naturalHeight);
 
-  // Ensure valid dimensions
-  if (pixelCrop.width <= 0 || pixelCrop.height <= 0) {
-    throw new Error("Invalid crop dimensions: " + JSON.stringify(pixelCrop));
+  // 3. VALIDATION
+  if (pixelCrop.width === 0 || pixelCrop.height === 0) {
+    throw new Error("Invalid crop area: width or height is 0");
   }
 
-  // 3. FIX DRAW IMAGE (MOST IMPORTANT)
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(pixelCrop.width * scaleX);
-  canvas.height = Math.round(pixelCrop.height * scaleY);
-  
-  console.log("CANVAS:", canvas.width, canvas.height);
-  
-  if (canvas.width <= 0 || canvas.height <= 0) {
-    throw new Error("Invalid canvas dimensions: " + canvas.width + "x" + canvas.height);
-  }
-  
   const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    throw new Error("No 2d context");
-  }
 
-  // 4. REMOVE WHITE FILL - draw image directly
+  if (!ctx) throw new Error("No canvas context");
+
+  // USE DIRECT NATURAL VALUES (NO SCALE BUG)
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  console.log("CANVAS SIZE:", canvas.width, canvas.height);
+
   ctx.drawImage(
     image,
-    Math.round(pixelCrop.x * scaleX),
-    Math.round(pixelCrop.y * scaleY),
-    Math.round(pixelCrop.width * scaleX),
-    Math.round(pixelCrop.height * scaleY),
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
     0,
     0,
-    canvas.width,
-    canvas.height
+    pixelCrop.width,
+    pixelCrop.height
   );
 
-  // 6. EXPORT FIX
   return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error("Canvas to Blob failed - blob is null"));
-          return;
-        }
-        console.log("BLOB CREATED:", blob.size, "bytes");
-        resolve(blob);
-      },
-      "image/jpeg",
-      0.95
-    );
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Canvas is empty"));
+        return;
+      }
+      console.log("BLOB CREATED:", blob.size, "bytes");
+      resolve(blob);
+    }, "image/jpeg", 0.95);
   });
 };
 
@@ -116,6 +85,7 @@ export const ImageCropModal = ({
     x: 10,
     y: 20,
   });
+  const [pixelCrop, setPixelCrop] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -168,16 +138,35 @@ export const ImageCropModal = ({
     }
     
     setCrop(newCrop);
+    
+    // Set initial pixel crop based on natural dimensions
+    const pixelWidth = Math.round((newCrop.width * img.naturalWidth) / 100);
+    const pixelHeight = Math.round((newCrop.height * img.naturalHeight) / 100);
+    const pixelX = Math.round((newCrop.x * img.naturalWidth) / 100);
+    const pixelY = Math.round((newCrop.y * img.naturalHeight) / 100);
+    
+    setPixelCrop({
+      x: pixelX,
+      y: pixelY,
+      width: pixelWidth,
+      height: pixelHeight,
+    });
   }, []);
 
   const handleCrop = async () => {
-    if (!imgRef.current || !imageUrl) return;
+    if (!imageUrl || !pixelCrop) return;
+
+    // VALIDATION
+    if (pixelCrop.width === 0 || pixelCrop.height === 0) {
+      alert("Invalid crop area");
+      return;
+    }
 
     setIsProcessing(true);
     setUploadError(false);
     
     try {
-      const croppedBlob = await getCroppedImg(imageUrl, crop, imgRef.current);
+      const croppedBlob = await getCroppedImg(imageUrl, pixelCrop);
       
       // Show success state briefly
       setUploadSuccess(true);
@@ -222,6 +211,20 @@ export const ImageCropModal = ({
     }
     
     setCrop(newCrop);
+    
+    // Reset pixel crop
+    const pixelWidth = Math.round((newCrop.width * img.naturalWidth) / 100);
+    const pixelHeight = Math.round((newCrop.height * img.naturalHeight) / 100);
+    const pixelX = Math.round((newCrop.x * img.naturalWidth) / 100);
+    const pixelY = Math.round((newCrop.y * img.naturalHeight) / 100);
+    
+    setPixelCrop({
+      x: pixelX,
+      y: pixelY,
+      width: pixelWidth,
+      height: pixelHeight,
+    });
+    
     setUploadSuccess(false);
     setUploadError(false);
   };
@@ -248,6 +251,7 @@ export const ImageCropModal = ({
       x: 10,
       y: 20,
     });
+    setPixelCrop(null);
     setIsProcessing(false);
     setUploadSuccess(false);
     setUploadError(false);
@@ -301,6 +305,7 @@ export const ImageCropModal = ({
               <ReactCrop
                 crop={crop}
                 onChange={(c) => setCrop(c)}
+                onComplete={(_, pixels) => setPixelCrop(pixels)}
                 className="max-w-full max-h-full"
                 style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
               >
