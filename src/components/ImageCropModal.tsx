@@ -1,7 +1,9 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Crop, Upload, SkipForward } from "lucide-react";
+import { X, Crop, Upload, SkipForward, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import Cropper from "react-easy-crop";
 
 interface ImageCropModalProps {
   isOpen: boolean;
@@ -11,134 +13,119 @@ interface ImageCropModalProps {
   onSkip: () => void;
 }
 
-export const ImageCropModal = ({ isOpen, imageFile, onClose, onCrop, onSkip }: ImageCropModalProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [cropArea, setCropArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
-  const [scale, setScale] = useState(1);
+// Helper to create cropped image
+const createCroppedImage = async (
+  imageSrc: string,
+  pixelCrop: { x: number; y: number; width: number; height: number }
+): Promise<Blob> => {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  const ctx = canvas.getContext("2d");
 
-  const loadImage = useCallback((file: File) => {
-    const img = new Image();
-    img.onload = () => {
-      setImageObj(img);
-      setImageLoaded(true);
-      // Draw image on canvas
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          // Calculate scale to fit within max dimensions
-          const maxWidth = 600;
-          const maxHeight = 500;
-          let width = img.width;
-          let height = img.height;
-          
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-          if (height > maxHeight) {
-            width = (width * maxHeight) / height;
-            height = maxHeight;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          setScale(width / img.width);
-          ctx.drawImage(img, 0, 0, width, height);
-        }
-      }
-    };
-    img.src = URL.createObjectURL(file);
-  }, []);
-
-  // Load image when file changes
-  if (imageFile && !imageObj) {
-    loadImage(imageFile);
+  if (!ctx) {
+    throw new Error("No 2d context");
   }
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setIsDrawing(true);
-    setStartPos({ x, y });
-    setCropArea(null);
-  };
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setCropArea({
-      x: Math.min(startPos.x, x),
-      y: Math.min(startPos.y, y),
-      width: Math.abs(x - startPos.x),
-      height: Math.abs(y - startPos.y),
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDrawing(false);
-  };
-
-  const handleCrop = () => {
-    if (!cropArea || !imageObj || !canvasRef.current) return;
-    
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Calculate actual crop coordinates on original image
-    const actualX = cropArea.x / scale;
-    const actualY = cropArea.y / scale;
-    const actualWidth = cropArea.width / scale;
-    const actualHeight = cropArea.height / scale;
-
-    canvas.width = actualWidth;
-    canvas.height = actualHeight;
-    
-    ctx.drawImage(
-      imageObj,
-      actualX, actualY, actualWidth, actualHeight,
-      0, 0, actualWidth, actualHeight
-    );
-
+  return new Promise((resolve) => {
     canvas.toBlob((blob) => {
-      if (blob) {
-        onCrop(blob);
-      }
-    }, 'image/jpeg', 0.9);
+      if (blob) resolve(blob);
+    }, "image/jpeg", 0.95);
+  });
+};
+
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", (error) => reject(error));
+    image.src = url;
+  });
+
+export const ImageCropModal = ({
+  isOpen,
+  imageFile,
+  onClose,
+  onCrop,
+  onSkip,
+}: ImageCropModalProps) => {
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Create object URL when file changes
+  if (imageFile && !imageUrl) {
+    const url = URL.createObjectURL(imageFile);
+    setImageUrl(url);
+  }
+
+  const onCropComplete = useCallback(
+    (_: { x: number; y: number; width: number; height: number },
+     croppedAreaPixels: { x: number; y: number; width: number; height: number }) => {
+      setCroppedAreaPixels(croppedAreaPixels);
+    },
+    []
+  );
+
+  const handleCrop = async () => {
+    if (!imageUrl || !croppedAreaPixels) return;
+    
+    setIsProcessing(true);
+    try {
+      const croppedBlob = await createCroppedImage(imageUrl, croppedAreaPixels);
+      onCrop(croppedBlob);
+    } catch (error) {
+      console.error("Crop failed:", error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSkip = () => {
-    setCropArea(null);
-    setImageObj(null);
-    setImageLoaded(false);
+    // Cleanup
+    if (imageUrl) {
+      URL.revokeObjectURL(imageUrl);
+    }
+    setImageUrl(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
     onSkip();
   };
 
   const handleClose = () => {
-    setCropArea(null);
-    setImageObj(null);
-    setImageLoaded(false);
+    // Cleanup
+    if (imageUrl) {
+      URL.revokeObjectURL(imageUrl);
+    }
+    setImageUrl(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !imageUrl) return null;
 
   return (
     <AnimatePresence>
@@ -146,64 +133,78 @@ export const ImageCropModal = ({ isOpen, imageFile, onClose, onCrop, onSkip }: I
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4"
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4"
         onClick={handleClose}
       >
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
+          initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-background p-6 shadow-glow"
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="w-full max-w-md sm:max-w-lg mx-auto rounded-2xl bg-background p-4 sm:p-6 shadow-glow"
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            onClick={handleClose}
-            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted"
-          >
-            <X className="h-5 w-5" />
-          </button>
-
-          <h2 className="mb-4 font-display text-xl font-bold">Crop Image (Optional)</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Drag to select area to crop, or skip to use original image.
-          </p>
-
-          <div className="relative mb-4 overflow-hidden rounded-xl border border-border bg-muted">
-            {!imageLoaded ? (
-              <div className="flex h-64 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              </div>
-            ) : (
-              <div className="relative">
-                <canvas
-                  ref={canvasRef}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                  className="cursor-crosshair"
-                />
-                {cropArea && (
-                  <div
-                    className="pointer-events-none absolute border-2 border-primary bg-primary/20"
-                    style={{
-                      left: cropArea.x,
-                      top: cropArea.y,
-                      width: cropArea.width,
-                      height: cropArea.height,
-                    }}
-                  />
-                )}
-              </div>
-            )}
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-display text-xl font-bold">Crop Image</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Drag to move, pinch/scroll to zoom
+              </p>
+            </div>
+            <button
+              onClick={handleClose}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          <div className="flex gap-3">
+          {/* Crop Container */}
+          <div className="relative w-full h-[300px] sm:h-[400px] bg-black rounded-xl overflow-hidden">
+            <Cropper
+              image={imageUrl}
+              crop={crop}
+              zoom={zoom}
+              aspect={4 / 3}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={onCropComplete}
+              showGrid={true}
+              style={{
+                containerStyle: {
+                  width: "100%",
+                  height: "100%",
+                  backgroundColor: "#000",
+                },
+                mediaStyle: {
+                  transition: "none",
+                },
+              }}
+            />
+          </div>
+
+          {/* Zoom Slider */}
+          <div className="mt-4 flex items-center gap-3">
+            <ZoomOut className="h-4 w-4 text-muted-foreground" />
+            <Slider
+              value={[zoom]}
+              onValueChange={(value) => setZoom(value[0])}
+              min={1}
+              max={3}
+              step={0.1}
+              className="flex-1"
+            />
+            <ZoomIn className="h-4 w-4 text-muted-foreground" />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 mt-4">
             <Button
               type="button"
               variant="outline"
-              className="flex-1"
+              className="w-full sm:flex-1"
               onClick={handleSkip}
+              disabled={isProcessing}
             >
               <SkipForward className="mr-2 h-4 w-4" />
               Skip & Use Original
@@ -211,12 +212,21 @@ export const ImageCropModal = ({ isOpen, imageFile, onClose, onCrop, onSkip }: I
             <Button
               type="button"
               variant="hero"
-              className="flex-1"
+              className="w-full sm:flex-1"
               onClick={handleCrop}
-              disabled={!cropArea}
+              disabled={isProcessing}
             >
-              <Crop className="mr-2 h-4 w-4" />
-              {cropArea ? "Crop & Upload" : "Select Area First"}
+              {isProcessing ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Crop className="mr-2 h-4 w-4" />
+                  Crop & Upload
+                </>
+              )}
             </Button>
           </div>
         </motion.div>
