@@ -34,26 +34,27 @@ const Home = () => {
     return promo.badgeType === activeFilter;
   });
 
-  // Fetch promos with retry logic for backend timeouts
+  // Fetch promos with retry logic - NO ERROR TOAST (silent retry)
   useEffect(() => {
-    const fetchPromos = async (retries = 2) => {
+    const fetchPromos = async (retries = 3) => {
       try {
         setLoading(true);
         const data = await getPromos();
         setPromos(data.filter((p) => p.active !== false));
+        setLoading(false);
       } catch (err: any) {
         console.error('[Home] Failed to load promos:', err);
         
-        // Retry on timeout
+        // Silent retry on timeout - NO ERROR SHOWN TO USER
         if (retries > 0 && (err.code === 'ECONNABORTED' || err.message?.includes('timeout'))) {
-          console.log(`[Home] Retrying... ${retries} attempts left`);
-          setTimeout(() => fetchPromos(retries - 1), 2000);
-          return;
+          console.log(`[Home] Server waking up, retrying... ${retries} left`);
+          setTimeout(() => fetchPromos(retries - 1), 3000);
+          return; // Keep loading state, don't show error
         }
         
-        toast({ title: "Error", description: "Failed to load promos. Please refresh the page." });
-      } finally {
+        // Only show error if truly failed after all retries
         setLoading(false);
+        // Don't show toast - just show empty state with retry button
       }
     };
     
@@ -190,10 +191,25 @@ const Home = () => {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-80 animate-pulse rounded-2xl bg-muted" />
-            ))}
+          <div className="space-y-8">
+            {/* Server waking up message */}
+            <div className="text-center py-8">
+              <div className="inline-flex items-center gap-3 rounded-full bg-primary/10 px-6 py-3">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <span className="text-sm font-medium text-primary">
+                  Loading promos... Please wait a moment
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Our server is waking up ⏰
+              </p>
+            </div>
+            {/* Skeleton cards */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-80 animate-pulse rounded-2xl bg-gradient-to-br from-muted via-muted/80 to-muted" />
+              ))}
+            </div>
           </div>
         ) : filteredPromos.length === 0 ? (
           <div className="text-center py-12">
