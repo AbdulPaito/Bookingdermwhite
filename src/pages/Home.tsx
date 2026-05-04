@@ -34,11 +34,30 @@ const Home = () => {
     return promo.badgeType === activeFilter;
   });
 
+  // Fetch promos with retry logic for backend timeouts
   useEffect(() => {
-    getPromos()
-      .then((data) => setPromos(data.filter((p) => p.active !== false)))
-      .catch(() => toast({ title: "Error", description: "Failed to load promos." }))
-      .finally(() => setLoading(false));
+    const fetchPromos = async (retries = 2) => {
+      try {
+        setLoading(true);
+        const data = await getPromos();
+        setPromos(data.filter((p) => p.active !== false));
+      } catch (err: any) {
+        console.error('[Home] Failed to load promos:', err);
+        
+        // Retry on timeout
+        if (retries > 0 && (err.code === 'ECONNABORTED' || err.message?.includes('timeout'))) {
+          console.log(`[Home] Retrying... ${retries} attempts left`);
+          setTimeout(() => fetchPromos(retries - 1), 2000);
+          return;
+        }
+        
+        toast({ title: "Error", description: "Failed to load promos. Please refresh the page." });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchPromos();
   }, []);
 
   const openBooking = (promo?: Promo) => {

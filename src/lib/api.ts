@@ -6,7 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 export const apiClient = axios.create({
   baseURL: API_URL,
   headers: { "Content-Type": "application/json" },
-  timeout: 15000,
+  timeout: 30000, // ← INCREASED: 30s timeout for slow Render backend
 });
 
 // Attach JWT token to every request

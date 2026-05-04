@@ -146,30 +146,28 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
         </div>
 
         {/* 
-          OPTIMIZED IMAGE
-          - Always rendered when in viewport
-          - Opacity fades in after load
-          - GPU-accelerated with transform
+          OPTIMIZED IMAGE - ALWAYS RENDERED
+          - Starts visible immediately (no opacity-0)
+          - Skeleton overlays until loaded
+          - Aggressive fix for race condition
         */}
-        {isInViewport && (
-          <img
-            ref={imgRef}
-            src={displayUrl}
-            alt={promo.title}
-            loading={loading}
-            decoding={decoding}
-            className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out will-change-transform ${
-              isLoaded 
-                ? 'opacity-100 scale-100' 
-                : 'opacity-0 scale-105'
-            } group-hover:scale-105`}
-            onLoad={handleLoad}
-            onError={handleError}
-            style={{ 
-              transform: 'translateZ(0)', // GPU layer
-            }}
-          />
-        )}
+        <img
+          ref={imgRef}
+          src={displayUrl}
+          alt={promo.title}
+          loading={loading}
+          decoding={decoding}
+          className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out will-change-transform ${
+            isLoaded 
+              ? 'opacity-100 scale-100' 
+              : 'opacity-100'  // ← CHANGED: Always visible, skeleton covers it
+          } group-hover:scale-105`}
+          onLoad={handleLoad}
+          onError={handleError}
+          style={{ 
+            transform: 'translateZ(0)', // GPU layer
+          }}
+        />
 
         {/* Error State Overlay */}
         {hasError && (
