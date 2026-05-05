@@ -24,6 +24,7 @@ const Home = () => {
   const [selectedPromo, setSelectedPromo] = useState<Promo | undefined>();
   const [promos, setPromos] = useState<Promo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const { settings, loading: settingsLoading } = useSiteSettings();
   const [heroImgLoaded, setHeroImgLoaded] = useState(false);
@@ -36,30 +37,36 @@ const Home = () => {
 
   // Fetch promos with retry logic - NO ERROR TOAST (silent retry)
   useEffect(() => {
-    const fetchPromos = async (retries = 3) => {
+    const fetchPromos = async (retries = 5) => {
       try {
         setLoading(true);
+        setRetryCount((prev) => prev + 1);
         const data = await getPromos();
         setPromos(data.filter((p) => p.active !== false));
         setLoading(false);
+        setRetryCount(0);
       } catch (err: any) {
         console.error('[Home] Failed to load promos:', err);
         
         // Silent retry on timeout - NO ERROR SHOWN TO USER
-        if (retries > 0 && (err.code === 'ECONNABORTED' || err.message?.includes('timeout'))) {
+        if (retries > 0 && (err.code === 'ECONNABORTED' || err.message?.includes('timeout') || err.response?.status === 503)) {
           console.log(`[Home] Server waking up, retrying... ${retries} left`);
-          setTimeout(() => fetchPromos(retries - 1), 3000);
+          setTimeout(() => fetchPromos(retries - 1), 2000);
           return; // Keep loading state, don't show error
         }
         
         // Only show error if truly failed after all retries
         setLoading(false);
-        // Don't show toast - just show empty state with retry button
       }
     };
     
     fetchPromos();
   }, []);
+
+  // Manual reload function
+  const handleReload = () => {
+    window.location.reload();
+  };
 
   const openBooking = (promo?: Promo) => {
     setSelectedPromo(promo);
@@ -194,14 +201,17 @@ const Home = () => {
           <div className="space-y-8">
             {/* Server waking up message */}
             <div className="text-center py-8">
-              <div className="inline-flex items-center gap-3 rounded-full bg-primary/10 px-6 py-3">
+              <div className="inline-flex items-center gap-3 rounded-full bg-primary/10 px-6 py-3 animate-pulse">
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 <span className="text-sm font-medium text-primary">
-                  Loading promos... Please wait a moment
+                  {retryCount > 1 ? `Retrying... (attempt ${retryCount})` : 'Loading promos... Please wait'}
                 </span>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Our server is waking up ⏰
+                {retryCount > 2 ? 'Server is waking up from sleep mode ⏰' : 'Connecting to server...'}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground/70">
+                This may take up to 30 seconds on first visit
               </p>
             </div>
             {/* Skeleton cards */}
@@ -213,13 +223,31 @@ const Home = () => {
           </div>
         ) : filteredPromos.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No promos found in this category.</p>
-            <button 
-              onClick={() => setActiveFilter('all')}
-              className="mt-2 text-sm text-primary hover:underline"
-            >
-              Show all promos
-            </button>
+            {promos.length === 0 ? (
+              // Empty because API failed
+              <div className="space-y-4">
+                <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                  <Sparkles className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">Unable to load promos</p>
+                <p className="text-xs text-muted-foreground/70">The server may be waking up from sleep mode</p>
+                <Button variant="outline" onClick={handleReload} className="mt-4">
+                  <Zap className="mr-2 h-4 w-4" />
+                  Reload Page
+                </Button>
+              </div>
+            ) : (
+              // Empty because of filter
+              <>
+                <p className="text-muted-foreground">No promos found in this category.</p>
+                <button 
+                  onClick={() => setActiveFilter('all')}
+                  className="mt-2 text-sm text-primary hover:underline"
+                >
+                  Show all promos
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
