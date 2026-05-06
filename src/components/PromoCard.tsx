@@ -135,14 +135,17 @@ export const PromoCard = ({ promo, onBook, index = 0 }: Props) => {
       >
         {/* 
           SKELETON LOADER
-          Shows while image is loading - prevents layout shift
+          Simple loading placeholder - no shimmer to avoid eye strain
         */}
         <div 
-          className={`absolute inset-0 z-10 bg-gradient-to-br from-muted via-muted/80 to-muted animate-pulse transition-opacity duration-500 ${
+          className={`absolute inset-0 z-10 bg-muted transition-opacity duration-500 ${
             isLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+          {/* Static placeholder - no animation to prevent eye strain */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-full border-2 border-muted-foreground/20 border-t-primary/40 animate-spin" />
+          </div>
         </div>
 
         {/* 
