@@ -135,19 +135,22 @@ const Home = () => {
             className="relative order-1 md:order-2"
           >
             <div className="relative flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-background to-accent/10 p-2 shadow-glow ring-1 ring-primary/10 sm:aspect-[4/5] sm:rounded-3xl sm:p-3 md:rounded-[2.5rem]">
-              {(!heroImgLoaded || settingsLoading) && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3">
+              {(!heroImgLoaded || settingsLoading) ? (
+                // LOADING STATE - Only show spinner, NO image yet
+                <div className="flex flex-col items-center justify-center gap-3">
                   <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                  <span className="text-sm font-medium text-primary/70">Loading image...</span>
+                  <span className="text-sm font-medium text-primary/70">Loading...</span>
                 </div>
+              ) : (
+                // LOADED STATE - Show image only after fully loaded
+                <img
+                  src={settings.heroImage || "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&q=80"}
+                  alt="Premium beauty clinic hero"
+                  className="h-full w-full rounded-xl object-contain sm:rounded-2xl md:rounded-[2rem] animate-fade-in"
+                  onLoad={() => setHeroImgLoaded(true)}
+                  onError={() => setHeroImgLoaded(true)}
+                />
               )}
-              <img
-                src={settings.heroImage || "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&q=80"}
-                alt="Premium beauty clinic hero"
-                className="h-full w-full rounded-xl object-contain sm:rounded-2xl md:rounded-[2rem]"
-                onLoad={() => setHeroImgLoaded(true)}
-                onError={() => setHeroImgLoaded(true)}
-              />
             </div>
           </motion.div>
         </div>
