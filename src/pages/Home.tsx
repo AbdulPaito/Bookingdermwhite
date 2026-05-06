@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Award, Heart, ShieldCheck, Sparkles, Star, Zap } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -28,6 +28,14 @@ const Home = () => {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const { settings, loading: settingsLoading } = useSiteSettings();
   const [heroImgLoaded, setHeroImgLoaded] = useState(false);
+  const heroImgRef = useRef<HTMLImageElement>(null);
+
+  // Check if hero image already cached (race condition fix)
+  useEffect(() => {
+    if (heroImgRef.current && heroImgRef.current.complete && heroImgRef.current.naturalWidth > 0) {
+      setHeroImgLoaded(true);
+    }
+  }, [settings.heroImage]);
 
   // Filter promos based on active tab
   const filteredPromos = promos.filter((promo) => {
@@ -135,22 +143,25 @@ const Home = () => {
             className="relative order-1 md:order-2"
           >
             <div className="relative flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-background to-accent/10 p-2 shadow-glow ring-1 ring-primary/10 sm:aspect-[4/5] sm:rounded-3xl sm:p-3 md:rounded-[2.5rem]">
-              {(!heroImgLoaded || settingsLoading) ? (
-                // LOADING STATE - Only show spinner, NO image yet
-                <div className="flex flex-col items-center justify-center gap-3">
+              {/* LOADING SPINNER - shows while image loading */}
+              {(!heroImgLoaded || settingsLoading) && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-primary/10 via-background to-accent/10">
                   <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   <span className="text-sm font-medium text-primary/70">Loading...</span>
                 </div>
-              ) : (
-                // LOADED STATE - Show image only after fully loaded
-                <img
-                  src={settings.heroImage || "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&q=80"}
-                  alt="Premium beauty clinic hero"
-                  className="h-full w-full rounded-xl object-contain sm:rounded-2xl md:rounded-[2rem] animate-fade-in"
-                  onLoad={() => setHeroImgLoaded(true)}
-                  onError={() => setHeroImgLoaded(true)}
-                />
               )}
+              
+              {/* HERO IMAGE - always rendered, hidden by opacity until loaded */}
+              <img
+                ref={heroImgRef}
+                src={settings.heroImage || "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&q=80"}
+                alt="Premium beauty clinic hero"
+                className={`h-full w-full rounded-xl object-contain sm:rounded-2xl md:rounded-[2rem] transition-all duration-500 ${
+                  heroImgLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                }`}
+                onLoad={() => setHeroImgLoaded(true)}
+                onError={() => setHeroImgLoaded(true)}
+              />
             </div>
           </motion.div>
         </div>
